@@ -1,0 +1,6 @@
+SELECT Id,Shipment__c,Shipment__r.Name,Shipment__r.Theatre__c,Shipment__r.Theatre__r.Name,Shipment__r.Shipment_Destination__c,Asset__c,Asset__r.Name,Screen__c,Screen__r.Name FROM Shipment_Line_Item__c WHERE Shipment__r.Circuit__c = 'a1Zm00000001muI' AND Product__r.ConditionalAccess__c = TRUE ORDER BY Shipment__r.Name
+
+
+
+SELECT Id, Name, AccountId, Account.Name, Account.BillingAddress, Screen__c, Screen__r.Name, (SELECT License_End_Date__c, KeyStatus__c	FROM License_Key__c WHERE Keystatus__c IN ('CURRENT', 'EXPIRED')	ORDER BY KeyStatus__c LIMIT 1) FROM Asset WHERE Account.Circuit__c = 'a1Zm00000001muI' AND Product2.ConditionalAccess__c = TRUE
+ORDER BY Account.Name

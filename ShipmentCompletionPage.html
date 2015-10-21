@@ -1,0 +1,495 @@
+<!-- Visualforce Page to get the table of Shipment Line item details with searching, column sorting, 
+    pagination and filtering -->
+<apex:page controller="ShipmentCompletionController" docType="HTML-5.0" sidebar="false">
+    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+    <apex:stylesheet value="//code.jquery.com/ui/1.11.1/themes/flick/jquery-ui.css" />
+    <apex:includescript value="//code.jquery.com/jquery-1.11.1.min.js" />
+    <apex:includescript value="//cdn.datatables.net/1.10.4/js/jquery.dataTables.min.js" />
+    <apex:stylesheet value="//cdn.datatables.net/1.10.4/css/jquery.dataTables.css" />
+    <style>
+        a{
+            text-decoration: none;
+        }
+        .tbl-shipment th{
+            white-space: inherit;
+        }
+        .tbl-shipment td input[type="date"]{
+            width: 125px;
+        }
+        .tbl-shipment td input[type="text"]{
+            width: 65px;
+        }
+        .tbl-shipment td .date-field{
+            width: 60px;
+        }
+        .tbl-shipment td select{
+            width: 70px;
+        }
+        .small-column{
+            width: 65px !important;
+            padding: 15px 20px 10px 10px !important;
+            height: 40px;
+            float: left;
+            word-wrap: break-word;
+            text-align: left;
+            white-space: pre;
+        }
+        #entries{
+            margin:auto;
+        }
+        .dataTables_wrapper{
+            width:90%;
+            margin:auto;
+        }
+        .dataTables_wrapper .dataTables_filter{
+            margin-bottom:10px;
+        }
+        .date-sorting{
+            margin:10px 0 10px 91px;
+        }
+        .date-sorting input[type="text"]{
+            margin:0 3px 0 5px;
+        }
+        .selectedWarehouseId{
+            margin: 0 3px 0 5px;
+        }
+        .ui-datepicker-trigger{
+              position: relative;
+              top: 3px;
+              left:2px;
+        }
+        .date-sorting .ui-datepicker-trigger{
+            left:0px;
+        }
+        .bold-text{
+            font-weight:bold;
+        }
+        .new-filter-items{
+            margin:10px 0;
+        }
+        td.no-right-padding {
+            padding-right: 0px !important;
+        }
+
+        @media screen and (max-width:1500px){
+            #entries{
+            mawidth:100%;
+            margin:auto;
+            }
+            .dataTables_wrapper{
+                width:100%;
+                margin:auto;
+            }
+            #entries{
+                width:100%;
+                margin:auto;
+            }
+        }
+    </style>
+    <div>
+        <apex:form >
+            <apex:pageBlock >
+                <p class="bold-text">Scheduled Ship Date</p> 
+                <div class="date-sorting">From : 
+                <apex:input type="text" styleClass="rangeFrom jqueryDate" value="{!rangeFromDate}" id="idFromDate" html-readonly="true"/> 
+                To :
+                <apex:input type="text" styleClass="rangeTo jqueryDate" value="{!rangeToDate}" id="idToDate" html-readonly="true"/>
+                </div>
+                <div id="errorMsg" style="color:red;"></div>
+                <br/>
+                Source Warehouse ID :
+                <apex:selectList value="{!selectedWarehouseId}" styleClass="selectedWarehouseId" multiselect="false" size="1">
+                    <apex:selectOptions value="{!warehouseIds}"/>
+                </apex:selectList>
+                <br/>
+                <br/>
+                <input type="button" id="startSearch" value="Search"/>
+                <input type="button" id="clearSearch" value="Clear"/>
+            </apex:pageBlock>
+            <div class="new-filter-items">
+                <p id="entries" class="num-of-entries">Selected 0 entries</p>
+            </div>
+            <apex:pageBlock >
+                <apex:commandButton action="{!save}" value="Save" reRender="msg" style="margin-left:50%" status="actStatusId"/>
+                <apex:actionStatus id="actStatusId" >
+                    <apex:facet name="start" >
+                        <img src="/img/loading.gif" />
+                    </apex:facet>
+                </apex:actionStatus>
+            </apex:pageBlock>
+            
+            <apex:pageMessages id="msg"/>
+            <apex:outputPanel id="pnlShipmentsTables">
+                <table id="tblShipments" class="display tbl-shipment" cellspacing="0" style="padding-bottom:10px; border-style:solid;">
+                    <thead>
+                        <tr>
+                            <th width="20px">
+                                <input type="checkbox" name="" class="selectall" value="ON" />
+                            </th>
+                            <th>Shipment Id</th>
+                            <th class="small-column">MAS Customer#</th>
+                            <th>Scheduled Ship Date</th>
+                            <th>Shipment Type</th>
+                            <th>Ship To</th>
+                            <th>Shipment Destination</th>
+                            <th class="small-column">Source Warehouse</th>
+                            <th class="date-field">Actual Ship Date</th>
+                            <th class="small-column">Tracking Number</th>
+                            <th>Line Status</th>
+                            <th>Product Name</th>
+                            <th>Quantity</th>
+                            <th>Serial Number</th>
+                        </tr>
+                    </thead>
+                </table>
+            </apex:outputPanel>
+            <apex:outputPanel id="hiddenJsonData">
+                <apex:inputHidden id="hiddenBlock" value="{!jsonDataMinimal}" />
+            </apex:outputPanel>
+        </apex:form>
+    </div>
+    <script>
+        var checkedArr = [];
+        var checkCount = 0;
+        var shipDateArr = [];
+        var trackingNoArr = [];
+        var lineStatusArr = [];
+        var shipmentsTable;
+        
+            buildShipmentsTable();
+            jQuery(document).ready(function() {
+                $('[class~=jqueryDate]').datepicker({                    
+                  changeMonth: true,
+                  changeYear: true,
+                  showOn: "button",      
+                  buttonImage: "//jqueryui.com/resources/demos/datepicker/images/calendar.gif",
+                  buttonImageOnly: true,
+                  buttonText: "Select date",
+                  minDate:"-100y",
+                  maxDate: '0',
+                  dateFormat: 'yy-mm-dd'                 
+            });
+            //to move the html of number filter up
+            $('.dataTables_length').insertAfter('.num-of-entries');
+
+               jQuery(".selectall").click(function() {
+                    var selectAllCheckbox = 0;
+                    if(jQuery('.selectall').prop('checked')){
+                    $('.rowIdentifier').each(function(i,obj) {
+                        $(this).prop('checked',true);
+                        var id = $(this).attr('id');
+                        checkedArr.push(id);
+                        selectAllCheckbox++;
+    
+                    });
+
+                    $('.clsShipDate').each(function(i,obj){
+                        var shipId = $(this).attr('id');
+                        shipDateArr.push(shipId);
+                    });
+                    
+                    $('.clsTrackingNumber').each(function(i,obj){
+                        var trackId = $(this).attr('id');
+                        trackingNoArr.push(trackId);
+                    });
+
+                    $('.clsLineStatus').each(function(i,obj){
+                        var lineId = $(this).attr('id');
+                        lineStatusArr.push(lineId);
+                    });
+
+                    checkCount = selectAllCheckbox;
+                }
+                else{
+                    var selectAllCheckbox = 0 ;
+                    checkCount = 0;
+                      $('.rowIdentifier').each(function(i,obj) {
+                        $(this).prop('checked',false);
+                    });
+                      checkedArr.length = 0;
+                      shipDateArr.length = 0;
+                      trackingNoArr.length = 0;
+                      lineStatusArr.length = 0;
+
+                }
+                    
+                    jQuery('#entries').html('Selected '+ selectAllCheckbox+' entries');
+                });
+
+                jQuery('.rangeTo').change(function() {
+                    if(jQuery('.rangeFrom').val() > jQuery('.rangeTo').val()){
+                        jQuery('.rangeFrom').val('');
+                        jQuery('.rangeTo').val('');
+                        jQuery('#errorMsg').html('Please select a date greater than from date');
+                    } else{
+                        jQuery('#errorMsg').html('');
+                    }
+                });
+                
+                jQuery('#startSearch').click(function() {
+                    var searchUrl = '/apex/ShipmentCompletion?id=' + jQuery('.selectedWarehouseId').val() + '&dFrom=' + jQuery('.rangeFrom').val() + '&dTo=' + jQuery('.rangeTo').val();
+                    $('.selectedWarehouseId').val(jQuery('.selectedWarehouseId').val());
+                    window.location.replace(searchUrl);
+                });
+
+                jQuery('#clearSearch').click(function(){
+                    jQuery('.rangeFrom').val('');
+                    jQuery('.rangeTo').val('');
+                    jQuery('.selectedWarehouseId').val('');
+                });
+
+                $('#tblShipments').on( 'page.dt', function () {
+                    window.setTimeout(uncheckNextPage,10);
+                    var selectAllCheckbox = 0 ;
+                    checkCount = 0;
+                        console.log(checkedArr);
+                        $(checkedArr).each(function(i,val){
+                            //debugger;
+                            jQuery('#'+ val).prop('checked',false);
+                        });
+                         
+                      $('.selectall').prop('checked',false);
+                      //$('.selectall').click();
+
+                      checkedArr.length = 0;
+                      shipDateArr.length = 0;
+                      trackingNoArr.length = 0;
+                      lineStatusArr.length = 0;
+                      jQuery('#entries').html('Selected '+ selectAllCheckbox+' entries');
+                
+                });
+                
+                $('select[name=tblShipments_length]').change(function(){
+                        
+                        var i=0;
+                        var valEntry = $('select[name=tblShipments_length]').val();
+                        $(checkedArr).each(function(i,val){
+                            i++;
+                            if(i>valEntry){
+                                debugger;
+                                console.log(jQuery('#'+ val));
+                                jQuery('#'+ val).prop('checked',false);
+                                //this.prop('checked',false);
+                            }   
+                        });
+                    });
+            });
+            
+            function uncheckNextPage(){
+               $('.selectall').click();
+               $('.selectall').click(); 
+            }
+         /*Function to build the Shipments Line Items Table  */
+
+            function buildShipmentsTable() {
+                var allShipments = {!jsonDataAllLineItems};
+                var idCount = 0;
+                var classCount = 0;
+                $.each(allShipments, function() {
+                    
+                    if (this.id == 'undefined' || this.id == null) {
+                        this.id = '<input id="' + this.recordId + '" class="rowIdentifier" type="checkbox" onchange="selectCheckbox(\'' + this.recordId + '\',\'clsRecord'+classCount+'\')"/>';
+                    } else {
+                        this.id = '<input id="' + this.recordId + '" class="rowIdentifier" type="checkbox" onchange="selectCheckbox(\'' + this.recordId + '\',\'clsRecord'+classCount+'\')"/>';
+                    }
+                    
+                    if (this.shipDate == 'undefined' || this.shipDate == null) {
+                        this.shipDate = '<input id="' + this.recordId + idCount + '" type="text" onchange="updateHiddenJsonData(\'' + this.recordId + idCount + '\',\'' + this.recordId +'\',\'clsShipDate\')" class="clsShipDate jqueryDate clsRecord'+classCount+'" readOnly="true"/>';
+                        idCount++;
+                    } else {
+                        this.shipDate = '<input id="' + this.recordId + idCount + '" type="text" value="' + this.shipDate + '" onchange="updateHiddenJsonData(\'' + this.recordId + idCount + '\',\'' + this.recordId +'\',\'clsShipDate\')" class="clsShipDate jqueryDate clsRecord'+classCount+'" readOnly="true"/>';
+                        idCount++;
+                    }
+                    
+
+                    if(this.trackingNumber == null){  
+                        this.trackingNumber = '<input id="' + this.recordId + idCount + '" type="text" onchange="updateHiddenJsonData(\'' + this.recordId + idCount + '\',\'' + this.recordId + '\',\'clsTrackingNumber\')" class="clsTrackingNumber clsRecord'+classCount+'" />';
+                        idCount++;  
+                    } else{  
+                        this.trackingNumber = '<input id="' + this.recordId + idCount +  '" type="text" value="' + this.trackingNumber + '" onchange="updateHiddenJsonData(\'' + this.recordId + idCount + '\',\'' + this.recordId + '\',\'clsTrackingNumber\')" class="clsTrackingNumber clsRecord'+classCount+'" />';
+                        idCount++;  
+                    }  
+                    
+                    if(this.lineStatus == null){  
+                        this.lineStatus = '<input id="' + this.recordId + idCount + '" type="text" onchange="updateHiddenJsonData(\'' + this.recordId + idCount + '\',\'' + this.recordId + '\',\'clsLineStatus\')" class="clsLineStatus clsRecord'+classCount+'" />';
+                        idCount++;  
+                    } else{ 
+                        
+                        var s = this.lineStatus;
+                        this.lineStatus = '<select id="' + this.recordId + idCount + '" onchange="updateHiddenJsonData(\'' + this.recordId + idCount + '\',\'' + this.recordId + '\',\'clsLineStatus\')" class="clsLineStatus clsRecord'+classCount+'">'+
+                            '<option value="Scheduled">Scheduled</option>'+
+                            '<option value="Received by Fulfillment Warehouse">Received by Fulfillment Warehouse</option>'+
+                            '<option value="Shipped">Shipped</option>'+
+                            '<option value="Delivered">Delivered</option>'+
+                            '<option value="Cancelled">Cancelled</option>'+
+                            '<option value="Exception">Exception</option>'+
+                            '</select>';
+                        this.lineStatus = this.lineStatus.replace('\"' + s + '\"', '\"' + s + '\" selected');
+                        idCount++;                 
+                    }  
+
+                    if(this.serialNumber == null){  
+                        this.serialNumber = '<input id="' + this.recordId + idCount +'" type="text" onchange="updateHiddenJsonData(\'' + this.recordId + idCount + '\',\'' + this.recordId + '\',\'clsSerialNumber\')" class="clsSerialNumber clsRecord'+classCount+'"/>';
+                        idCount++;  
+                    } else{  
+                        this.serialNumber = '<input id="' + this.recordId + idCount + '" type="text" value="' + this.serialNumber + '" onchange="updateHiddenJsonData(\'' + this.recordId + idCount + '\',\'' + this.recordId +'\',\'clsSerialNumber\')" class="clsSerialNumber clsRecord'+classCount+'"/>';
+                        idCount++;  
+                    }
+
+                    if(this.shipmentName == null){  
+                        this.shipmentName = '<a id="' + this.recordId + idCount +'" href="/' + this.recordId + '" target="_blank">' + this.shipmentName + '</a>';
+                        idCount++;  
+                    } else{  
+                        this.shipmentName = '<a id="' + this.recordId + idCount +'" href="/' + this.recordId + '" target="_blank">' + this.shipmentName + '</a>';
+                        idCount++;  
+                    }
+
+                    classCount++;
+
+                });
+
+                 $('#tblShipments').dataTable({
+                    
+                    "aaData": allShipments,
+                    "iDisplayLength": 100,
+                    "aoColumns": [{
+                        "mData": "id",
+                        "bSortable": false,
+                        "aTargets": [1]
+                    }, {
+                        "mData": "shipmentName"
+                    }, {
+                        "mData": "customerNumber"
+                    }, {
+                        "mData": "scheduledShipDate"
+                    }, {
+                        "mData": "shipmentType",
+                        "type" : "date"
+                    }, {
+                        "mData": "shipTo"
+                    }, {
+                        "mData": "shipDestination"
+                    }, {
+                        "mData": "sourceWarehouseName"
+                    }, {
+                        "mData": "shipDate",
+                        "type" : "date",
+                        "sClass":"no-right-padding"
+                    }, {
+                        "mData": "trackingNumber",
+                    }, {
+                        "mData": "lineStatus"
+                    }, {
+                        "mData": "productNameId"
+                    }, {
+                        "mData": "quantity"
+                    }, {
+                        "mData": "serialNumber"
+                    }]
+                    
+                });
+                      
+            }
+            
+            function selectCheckbox(id,clsRecord){
+                
+                var shipId = $('.'+clsRecord+'.clsShipDate').attr('id');
+                var trackId = $('.'+clsRecord+'.clsTrackingNumber').attr('id');
+                var lineId = $('.'+clsRecord+'.clsLineStatus').attr('id');
+
+                if(jQuery('#' + id).prop('checked')){
+                     checkedArr.push(id);
+                     checkCount++;
+                     shipDateArr.push(shipId);
+                     trackingNoArr.push(trackId);
+                     lineStatusArr.push(lineId);
+                 
+                }
+                else{
+                    var checkCheckbox = checkedArr.indexOf(id);
+                    var checkShipDate = shipDateArr.indexOf(shipId );
+                    var checkTrack = trackingNoArr.indexOf(trackId);
+                    var checkLine = lineStatusArr.indexOf(lineId);
+                    
+                    if(checkCheckbox>=0){
+                        checkedArr.splice(checkCheckbox,1);
+                        shipDateArr.splice(checkShipDate,1);
+                        trackingNoArr.splice(checkTrack,1);
+                        lineStatusArr.splice(checkLine,1);
+                    }
+                    checkCount--;   
+                }
+
+                jQuery('#entries').html('Selected '+ checkCount+' entries');
+            }
+
+            /*Function to update the changes in the fields*/
+
+            function updateHiddenJsonData(domId, rowId, classname) {
+               
+                var hiddenJsonData = $('input[id$=hiddenBlock]').val();
+                var obj = JSON.parse(hiddenJsonData);
+                console.log(checkedArr);
+                if(jQuery('#' + rowId).prop('checked')) {
+                   
+                    $.each(checkedArr,function(i,val) {
+                        $.each(obj, function() {
+                           if (this.recordId == val && classname == 'clsShipDate') {
+                            this.shipDate = jQuery('#' + domId ).val();
+                           
+                           $.each(shipDateArr,function(i,valDate){
+                               $('.clsShipDate#'+valDate).val(jQuery('#' + domId ).val());
+                                });
+                            }
+
+                        if (this.recordId == val && classname == 'clsTrackingNumber') {
+                            this.trackingNumber = jQuery('#' + domId ).val();
+                            
+                            $.each(trackingNoArr,function(i,valTrackNo){
+                               $('.clsTrackingNumber#'+valTrackNo).val(jQuery('#' + domId ).val());
+                                });
+                            }
+
+
+                        if (this.recordId == val && classname == 'clsLineStatus') {
+                            this.lineStatus = jQuery('#' + domId ).val();
+                            
+                            $.each(lineStatusArr,function(i,valLine){
+                               $('.clsLineStatus#'+valLine).val(jQuery('#' + domId ).val());
+                                });
+                        }
+
+                     });
+                });
+
+                    var objString = JSON.stringify(obj);
+                     $('input[id$=hiddenBlock]').val(objString);   
+
+            }
+
+                else{
+                $.each(obj, function() {
+                    
+                    if (this.recordId == rowId && classname == 'clsShipDate') {
+                        this.shipDate = jQuery('#' + domId ).val();
+                    }
+                    
+                    if (this.recordId == rowId && classname == 'clsTrackingNumber') {
+                        this.trackingNumber = $('#'+ domId).val();
+                    }
+
+                    if (this.recordId == rowId && classname == 'clsLineStatus') {
+                        this.lineStatus = $('#'+ domId).val();
+                    }
+                    
+                    if (this.recordId == rowId && classname == 'clsSerialNumber') {
+                        this.serialNumber = $('#'+ domId).val();
+                    }
+                });
+                var objString = JSON.stringify(obj);
+                $('input[id$=hiddenBlock]').val(objString);
+            }
+        }
+        
+    </script>
+</apex:page>

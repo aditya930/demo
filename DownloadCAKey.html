@@ -1,0 +1,60 @@
+<apex:page controller="DownloadCAKeysController" >
+    <head>
+        <script type="text/javascript" src="/soap/ajax/34.0/connection.js"> </script>
+     
+        <apex:includeScript value="{!URLFOR($Resource.JQuery, '/jquery-1.8.2.min.js')}"/>
+     
+        <apex:includeScript value="{!URLFOR($Resource.JsZip, '/jszip.js')}"/>
+        <apex:includeScript value="{!URLFOR($Resource.JsZip, '/jszip-load.js')}"/>
+        <apex:includeScript value="{!URLFOR($Resource.JsZip, '/jszip-deflate.js')}"/>
+        <apex:includeScript value="{!URLFOR($Resource.JsZip, '/jszip-inflate.js')}"/>
+
+        <script type="text/javascript">
+            var j$ = jQuery.noConflict();
+            var att;
+            var requestId = '{!currentRecordId}';
+
+            var zipFile = new JSZip();
+            //Invokes apex method to get attachments
+            j$(document).ready(function() {
+                Visualforce.remoting.Manager.invokeAction(
+                    '{!$RemoteAction.DownloadCAKeysController.getAttachments}',
+                    requestId,
+                    function(result,event) {
+                        if(event.status){
+                            //att = JSON.stringify(result);
+                            att = result;
+
+                            //var obj = jQuery.parseJSON(att);
+                            
+                                j$.each(att, function(key,value) {
+                                    compressFile(zipFile, value.attName, value.attEncodedBody);
+                                });
+                                sendZip(zipFile);
+                            
+                        }
+                    });    
+            });
+            
+            function compressFile(zipFile, name, data) {
+                zipFile.file(name, data, {base64:true});
+            }
+                
+            function sendZip(zipFile) {
+                var data = zipFile.generate();
+                var zipContent = j$('input[id$=zipContent]');
+                zipContent.val(data);
+                
+                sendAttachments();
+                
+            }
+            
+        </script>
+    </head>
+    
+    <apex:form id="uploadZipForm" enctype="multipart/form-data">
+        <apex:inputHidden id="zipContent" value="{!zipContent}" />
+        
+        <apex:actionFunction action="{!sendEmail}" name="sendAttachments"/>
+    </apex:form>
+</apex:page>

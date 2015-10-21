@@ -1,0 +1,488 @@
+<!-- Visualforce Page to get the table of Currently Shipping and
+Installed Conditional Access Equipment  
+Created By: Suyati Technologies-->
+<apex:page standardController="CA_Key_Request__c" extensions="NewCAKeyRequestController" sidebar="false" docType="HTML-5.0">
+    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+    <script src="//cdn.jsdelivr.net/jquery.cookie/1.4.1/jquery.cookie.min.js"></script>
+    <apex:stylesheet value="//code.jquery.com/ui/1.11.1/themes/flick/jquery-ui.css" />
+    <apex:includescript value="//code.jquery.com/jquery-1.11.1.min.js" />
+    <apex:includescript value="//cdn.datatables.net/1.10.4/js/jquery.dataTables.min.js" />
+    <apex:stylesheet value="//cdn.datatables.net/1.10.4/css/jquery.dataTables.css" />
+    <style>
+        .apexp .bPageBlock.apexDefaultPageBlock .pbBody{
+            margin: 10px auto;
+        }
+        .dataTables_wrapper{
+            width:90%;
+            margin:auto;
+        }
+        .dataTables_wrapper .dataTables_filter{
+            margin-bottom:10px;
+        }
+        .date-sorting{
+            margin: 10px auto;
+            width: 90%;
+        }
+        .ui-datepicker-trigger{
+              position: relative;
+              top: 3px;
+              left:2px;
+        }
+        .date-sorting .ui-datepicker-trigger{
+            left:0px;
+            height: 18px;
+            top: 5px;
+            margin-right: 10px;
+        }
+        .date-sorting input[type="text"]{
+            height: 15px;
+            margin-right: 3px;
+        }
+        .titleText{
+            width: 90%;
+            margin:25px auto 10px;
+            font-size: 20px;
+        }
+        .titleText h2{
+            font-weight: normal;
+        }
+    </style>
+    <apex:form >
+        <apex:pageBlock >
+            <apex:commandButton value="Create/Update Key Request" reRender="msg" style="margin-left:50%" status="actStatusId" onclick="assetToController()"/>
+                <apex:actionStatus id="actStatusId" >
+                    <apex:facet name="start" >
+                        <img src="/img/loading.gif" />
+                    </apex:facet>
+                </apex:actionStatus>
+                <apex:actionFunction name="actFuncAssetToController" action="{!save}"/>
+            <div id="errorMsgAsset" style="color:red;"></div>
+        </apex:pageBlock>
+        <apex:pageBlock >
+            <div class="date-sorting">License Begin Date:* 
+            <apex:input type="text" styleClass="rangeFrom jqueryDate" value="{!licenseBeginDate}" id="idFromDate" html-readonly="true"/> 
+            License End Date:*
+            <apex:input type="text" styleClass="rangeTo jqueryDate" value="{!licenseEndDate}" id="idToDate" html-readonly="true"/>
+            </div>
+            <div id="errorMsgDate" style="color:red;"></div>
+        </apex:pageBlock>
+            <apex:outputPanel id="pnlShippingAssetsTables">
+                <div class="titleText">
+                    Currently Shipping Conditional Access Equipment
+                </div>
+
+                <table id="tblShippingAssets" class="display tbl-shipment" cellspacing="0" style="padding-bottom:10px; border-style:solid;">
+                    <thead>
+                        <tr>
+                            <th width="20px">
+                                <input type="checkbox" name="" class="selectAllShipAssets" value="ON" />
+                            </th>
+                            <th>Asset Name</th>
+                            <th>Theatre Name</th>
+                            <th>Theatre Address</th>
+                            <th>Screen</th>
+                            <th>Shipment</th>
+                            
+                        </tr>
+                    </thead>
+                </table>
+            </apex:outputPanel>
+    
+
+    
+        
+        <apex:pageMessages id="msg"/>
+            <apex:outputPanel id="pnlInstalledAssetsTables">
+                <div class="titleText">
+                    Installed/Delivered Conditional Access Equipment
+                </div>
+
+                <table id="tblInstalledAssets" class="display tbl-shipment" cellspacing="0" style="padding-bottom:10px; border-style:solid;">
+                    <thead>
+                        <tr>
+                            <th width="20px">
+                                <input type="checkbox" name="" class="selectAllInstalledAssets" value="ON" />
+                            </th>
+                            <th>Asset Name</th>
+                            <th>Theatre Name</th>
+                            <th>Theatre Address</th>
+                            <th>Screen</th>
+                            <th>Key Status</th>
+                            <th>Current Key Expiration</th>
+                        </tr>
+                    </thead>
+                </table>
+            </apex:outputPanel>
+
+            <apex:outputPanel id="hiddenJsonData">
+                <apex:inputHidden id="hiddenBlockNewAssets" value="{!dataNewAssets}" />
+                <apex:inputHidden id="hiddenBlockDeleteAssets" value="{!dataDeleteAssets}" />
+            </apex:outputPanel>
+    </apex:form>
+
+    <script>
+        var j$ = jQuery.noConflict();
+       j$(document).ready(function() {
+        	fetchAssetArr();
+        });
+        var newAssetArr = [];
+        var shippingAssetArr = [];
+        var installedAssetArr = [];
+        var deleteAssetArr = [];
+        var retainAssetArr = [];
+        var totalAssetArr = [];
+        var jsKeyRequestId;
+        var checkDateStatus = '';
+        j$('[class~=jqueryDate]').datepicker({                    
+                  changeMonth: true,
+                  changeYear: true,
+                  showOn: "button",      
+                  buttonImage: "//jqueryui.com/resources/demos/datepicker/images/calendar.gif",
+                  buttonImageOnly: true,
+                  buttonText: "Select date",
+                  minDate:"-100y",
+                  maxDate: '+100y',
+                  dateFormat: 'yy-mm-dd'                 
+            });
+        buildShippingAssetTable();
+        buildInstalledAssetTable();
+
+        
+        //Click Function which fetches all the Shipping Assets
+        j$('.selectAllShipAssets').click(function() {
+            if(j$('.selectAllShipAssets').prop('checked') ){
+            	shippingAssetArr.length=0;
+                j$('.rowIdentifierShipped').each(function(i,obj) {
+                    if(j$(this).prop('checked') == false){
+						j$(this).prop('checked',true);
+	                    var id = j$(this).attr('id');
+	                    if(id!='null')
+	                    shippingAssetArr.push(id);
+	            	}
+                });
+            }
+
+            else {
+                j$('.rowIdentifierShipped').each(function(i,obj) {
+                    j$(this).prop('checked',false);
+                    var assetID = j$(this).attr('id');
+                    var checkCheckboxRetainAsset = retainAssetArr.indexOf(assetID);
+                    if(checkCheckboxRetainAsset>=0){
+                		retainAssetArr.splice(checkCheckboxRetainAsset,1);
+                		deleteAssetArr.push(assetID);
+                	}
+                });
+                shippingAssetArr.length=0;
+            }
+
+          });
+
+        
+        //Click Function which fetches all the Installed Assets
+        j$('.selectAllInstalledAssets').click(function() {
+            if(j$('.selectAllInstalledAssets').prop('checked')){
+            	installedAssetArr.length=0;
+                j$('.rowIdentifierInstalled').each(function(i,obj) {
+                    if(j$(this).prop('checked') == false){
+	                    j$(this).prop('checked',true);
+	                    var id = j$(this).attr('id');
+	                    if(id!='null')
+	                    installedAssetArr.push(id);
+	            	}
+                });
+            }
+
+            else {
+                j$('.rowIdentifierInstalled').each(function(i,obj) {
+                    j$(this).prop('checked',false);
+                    var assetID = j$(this).attr('id');
+                    var checkCheckboxRetainAsset = retainAssetArr.indexOf(assetID);
+                    if(checkCheckboxRetainAsset>=0){
+                		retainAssetArr.splice(checkCheckboxRetainAsset,1);
+                		deleteAssetArr.push(assetID);
+                	}
+                });
+                installedAssetArr.length=0;
+            }
+
+         });
+
+        
+        //Date Check Validation
+        j$('.rangeTo').change(function() {
+                    if(j$('.rangeFrom').val() > j$('.rangeTo').val()){
+                        j$('.rangeFrom').val('');
+                        j$('.rangeTo').val('');
+                        j$('#errorMsgDate').html('Please select a date greater than from date');
+                    } else{
+                        j$('#errorMsgDate').html('');
+                    }
+                });
+
+        //Uncheck all selected in the previous page when going to next page Shipment Assets
+        j$('#tblShippingAssets').on( 'page.dt', function () {
+                   j$('.selectAllShipAssets').prop('checked',false);
+                      window.setTimeout(repopulateCheckboxes,10);
+                  });
+
+        //Uncheck all selected in the previous page when going to next page Installed Assets
+        j$('#tblInstalledAssets').on( 'page.dt', function () {
+                   j$('.selectAllInstalledAssets').prop('checked',false);
+                      window.setTimeout(repopulateCheckboxes,10);
+                      
+                    });
+
+
+        //Uncheck all selected checkbox when the number of entries change in Shipping Assets
+        j$('select[name=tblShippingAssets_length]').change(function(){
+            j$('.selectAllShipAssets').prop('checked',false);
+          });
+
+        
+        //Uncheck all selected checkbox when the number of entries change in Installed Assets
+        j$('select[name=tblInstalledAssets_length]').change(function(){
+            j$('.selectAllInstalledAssets').prop('checked',false);
+          });
+
+
+        function uncheckNextPageShip(){
+        	j$('.selectAllShipAssets').click();
+            j$('.selectAllShipAssets').click(); 
+        }
+
+        function uncheckNextPageInstalled(){
+        	j$('.selectAllInstalledAssets').click();
+            j$('.selectAllInstalledAssets').click(); 
+        }
+        //Javascript Function to build Shipping Assets Table
+        
+        j$('.rangeFrom').change(function(){
+        	checkDateStatus = 'true';
+        });
+
+        j$('.rangeTo').change(function(){
+        	checkDateStatus = 'true';
+        });
+
+        function buildShippingAssetTable(){
+            var allShippingAssets = {!jsonDataCurrentShippingAssets};
+            j$.each(allShippingAssets, function() {
+
+            this.id = '<input id="' + this.assetID + '" class="rowIdentifierShipped"' ;
+            this.id	+='type="checkbox" onchange="selectCheckboxShip(\''+this.assetID+'\')"/>';
+
+                if(this.assetName == null){  
+                    this.assetName = '';
+                } else {
+                    this.assetName = '<a href="/' + this.assetID + '" target="_blank">' + this.assetName + '</a>';
+                }
+                
+                if(this.theatreName == null){  
+                    this.theatreName = '';
+                } else {
+                    this.theatreName = '<a href="/' + this.theatreID + '" target="_blank">' + this.theatreName + '</a>';
+                }
+                
+                if(this.screenName == null) {
+                    this.screenName = '';
+                } else {
+                    this.screenName = '<a href="/' + this.screenID + '" target="_blank">' + this.screenName + '</a>';
+                }
+
+                if(this.shipmentName == null) {
+                    this.shipmentName = '';
+                } else {
+                    this.shipmentName = '<a href="/' + this.shipmentID + '" target="_blank">' + this.shipmentName + '</a>';
+                }
+
+            });
+
+            j$('#tblShippingAssets').dataTable({
+                    
+                    "aaData": allShippingAssets,
+                    "iDisplayLength": 10,
+                    "language" : {
+                    	"lengthMenu": "Show _MENU_ records",
+                    	"info": "Showing _START_ to _END_ of _TOTAL_ records",
+                    },
+                    "aoColumns": [{
+                        "mData": "id",
+                        "bSortable": false,
+                        "aTargets": [1]
+                    }, {
+                        "mData": "assetName"
+                    }, {
+                        "mData": "theatreName"
+                    }, {
+                        "mData": "theatreAddress"
+                    }, {
+                        "mData": "screenName"
+                    }, {
+                        "mData": "shipmentName"
+                    }]
+                    
+                });
+        }
+
+        //Javascript Function to build Installed Assets Table
+        function buildInstalledAssetTable() {
+            var allInstalledAssets = {!jsonDataInstalledAssets};
+            j$.each(allInstalledAssets, function() {
+
+            this.id = '<input id="' + this.assetID + '" class="rowIdentifierInstalled" type="checkbox"' ;
+            this.id+= 'onchange="selectCheckboxInstalled(\''+this.assetID+'\')"/>';
+
+
+                if(this.assetName == null){  
+                    this.assetName = '';
+                } else {
+                    this.assetName = '<a href="/' + this.assetID + '" target="_blank">' + this.assetName + '</a>';
+                }
+                
+                if(this.theatreName == null){  
+                    this.theatreName = '';
+                } else {
+                    this.theatreName = '<a href="/' + this.theatreID + '" target="_blank">' + this.theatreName + '</a>';
+                }
+                
+                if(this.screenName == null) {
+                    this.screenName = '';
+                } else {
+                    this.screenName = '<a href="/' + this.screenID + '" target="_blank">' + this.screenName + '</a>';
+                }
+
+           });
+
+            j$('#tblInstalledAssets').dataTable({
+                    
+                    "aaData": allInstalledAssets,
+                    "iDisplayLength": 10,
+                    "language" : {
+                    	"lengthMenu": "Show _MENU_ records",
+                    	"info": "Showing _START_ to _END_ of _TOTAL_ records",
+                    },
+                    "aoColumns": [{
+                        "mData": "id",
+                        "bSortable": false,
+                        "aTargets": [1]
+                    }, {
+                        "mData": "assetName"
+                    }, {
+                        "mData": "theatreName"
+                    }, {
+                        "mData": "theatreAddress"
+                    }, {
+                        "mData": "screenName"
+                    }, {
+                        "mData": "keyStatus"
+                    }, {
+                        "mData": "keyExpirationDate",
+                        "type": "date"
+                    }]
+                    
+            });
+
+        }
+
+        function selectCheckboxShip(assetID) {
+            if(j$('#' + assetID).prop('checked') && assetID!='null') {
+                shippingAssetArr.push(assetID);
+                
+            }
+
+            else {
+                var checkCheckboxNewAsset = shippingAssetArr.indexOf(assetID);
+                var checkCheckboxRetainAsset = retainAssetArr.indexOf(assetID);
+
+                if(checkCheckboxRetainAsset>=0){
+                	retainAssetArr.splice(checkCheckboxRetainAsset,1);
+                	deleteAssetArr.push(assetID);
+                }
+                if(checkCheckboxNewAsset>=0){
+                    shippingAssetArr.splice(checkCheckboxNewAsset,1);
+                }
+            }
+
+        }
+
+        function selectCheckboxInstalled(assetID) {
+            if(j$('#' + assetID).prop('checked') && assetID!='null') {
+                installedAssetArr.push(assetID);
+                
+            }
+
+            else {
+                var checkCheckboxInstallAsset = installedAssetArr.indexOf(assetID);
+                var checkCheckboxRetainAsset = retainAssetArr.indexOf(assetID);
+
+                if(checkCheckboxRetainAsset>=0){
+                	retainAssetArr.splice(checkCheckboxRetainAsset,1);
+                	deleteAssetArr.push(assetID);
+                }
+
+                if(checkCheckboxInstallAsset>=0){
+                    installedAssetArr.splice(checkCheckboxInstallAsset,1);
+                }
+            }
+
+
+        }
+
+        function assetToController(){
+
+            j$.merge(newAssetArr,shippingAssetArr);
+        	j$.merge(newAssetArr,installedAssetArr);
+			j$.merge(retainAssetArr,newAssetArr);
+			j$.merge(totalAssetArr,newAssetArr);
+			j$.merge(totalAssetArr,deleteAssetArr);
+        	
+            if(j$('.rangeFrom').val() == '' && j$('.rangeTo').val() == ''){
+                j$('#errorMsgDate').html('Please select the License Begin Date and End Date');
+            }
+
+            else if(j$('.rangeFrom').val() == ''){
+                j$('#errorMsgDate').html('Please select the License Begin Date');
+            }
+
+            else if(j$('.rangeTo').val() == ''){
+                j$('#errorMsgDate').html('Please select the License End Date');
+            }
+
+            else if(jsKeyRequestId == '' && newAssetArr.length == 0){
+                j$('#errorMsgAsset').html('No Asset Selected! Please Select the Assets to continue');
+            }
+
+            else if(jsKeyRequestId!= '' && totalAssetArr.length==0 && checkDateStatus!='true'){
+                j$('#errorMsgAsset').html('No Asset Selected/Deselected! Please Select/Deselect the Assets to continue');
+            }
+
+            else {
+	            j$('input[id$=hiddenBlockNewAssets]').val(newAssetArr);
+	            j$('input[id$=hiddenBlockDeleteAssets]').val(deleteAssetArr);
+	            actFuncAssetToController();
+            }
+        }
+
+        function fetchAssetArr(){
+        	jsKeyRequestId = '{!keyRequestID}';
+        	console.log('jsKeyRequestId:::' + jsKeyRequestId);
+        	retainAssetArr = {!jsonCheckedAssetIds};
+        	if(retainAssetArr == '0'){
+        		retainAssetArr=[];
+        	}
+			else{
+			repopulateCheckboxes();
+			}
+			j$('.rangeFrom').val('{!retainBeginDate}');
+			j$('.rangeTo').val('{!retainEndDate}');
+        }
+
+        function repopulateCheckboxes(){
+        	 j$(retainAssetArr).each(function(i,val){
+                j$('#'+ val).prop('checked',true);
+             });
+        }
+        
+        
+    </script>
+</apex:page>
