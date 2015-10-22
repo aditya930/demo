@@ -123,7 +123,7 @@ Created By: Suyati Technologies-->
     <script>
         var j$ = jQuery.noConflict();
        j$(document).ready(function() {
-        	fetchAssetArr();
+            fetchAssetArr();
         });
         var newAssetArr = [];
         var shippingAssetArr = [];
@@ -151,14 +151,14 @@ Created By: Suyati Technologies-->
         //Click Function which fetches all the Shipping Assets
         j$('.selectAllShipAssets').click(function() {
             if(j$('.selectAllShipAssets').prop('checked') ){
-            	shippingAssetArr.length=0;
+                shippingAssetArr.length=0;
                 j$('.rowIdentifierShipped').each(function(i,obj) {
                     if(j$(this).prop('checked') == false){
-						j$(this).prop('checked',true);
-	                    var id = j$(this).attr('id');
-	                    if(id!='null')
-	                    shippingAssetArr.push(id);
-	            	}
+                        j$(this).prop('checked',true);
+                        var id = j$(this).attr('id');
+                        if(id!='null')
+                        shippingAssetArr.push(id);
+                    }
                 });
             }
 
@@ -168,9 +168,9 @@ Created By: Suyati Technologies-->
                     var assetID = j$(this).attr('id');
                     var checkCheckboxRetainAsset = retainAssetArr.indexOf(assetID);
                     if(checkCheckboxRetainAsset>=0){
-                		retainAssetArr.splice(checkCheckboxRetainAsset,1);
-                		deleteAssetArr.push(assetID);
-                	}
+                        retainAssetArr.splice(checkCheckboxRetainAsset,1);
+                        deleteAssetArr.push(assetID);
+                    }
                 });
                 shippingAssetArr.length=0;
             }
@@ -181,14 +181,14 @@ Created By: Suyati Technologies-->
         //Click Function which fetches all the Installed Assets
         j$('.selectAllInstalledAssets').click(function() {
             if(j$('.selectAllInstalledAssets').prop('checked')){
-            	installedAssetArr.length=0;
+                installedAssetArr.length=0;
                 j$('.rowIdentifierInstalled').each(function(i,obj) {
                     if(j$(this).prop('checked') == false){
-	                    j$(this).prop('checked',true);
-	                    var id = j$(this).attr('id');
-	                    if(id!='null')
-	                    installedAssetArr.push(id);
-	            	}
+                        j$(this).prop('checked',true);
+                        var id = j$(this).attr('id');
+                        if(id!='null')
+                        installedAssetArr.push(id);
+                    }
                 });
             }
 
@@ -198,9 +198,9 @@ Created By: Suyati Technologies-->
                     var assetID = j$(this).attr('id');
                     var checkCheckboxRetainAsset = retainAssetArr.indexOf(assetID);
                     if(checkCheckboxRetainAsset>=0){
-                		retainAssetArr.splice(checkCheckboxRetainAsset,1);
-                		deleteAssetArr.push(assetID);
-                	}
+                        retainAssetArr.splice(checkCheckboxRetainAsset,1);
+                        deleteAssetArr.push(assetID);
+                    }
                 });
                 installedAssetArr.length=0;
             }
@@ -244,32 +244,33 @@ Created By: Suyati Technologies-->
             j$('.selectAllInstalledAssets').prop('checked',false);
           });
 
-
+        
         function uncheckNextPageShip(){
-        	j$('.selectAllShipAssets').click();
+            j$('.selectAllShipAssets').click();
             j$('.selectAllShipAssets').click(); 
         }
 
         function uncheckNextPageInstalled(){
-        	j$('.selectAllInstalledAssets').click();
+            j$('.selectAllInstalledAssets').click();
             j$('.selectAllInstalledAssets').click(); 
         }
-        //Javascript Function to build Shipping Assets Table
+        
         
         j$('.rangeFrom').change(function(){
-        	checkDateStatus = 'true';
+            checkDateStatus = 'true';
         });
 
         j$('.rangeTo').change(function(){
-        	checkDateStatus = 'true';
+            checkDateStatus = 'true';
         });
 
+        //Function to populate Shipping Assets Table
         function buildShippingAssetTable(){
             var allShippingAssets = {!jsonDataCurrentShippingAssets};
             j$.each(allShippingAssets, function() {
 
             this.id = '<input id="' + this.assetID + '" class="rowIdentifierShipped"' ;
-            this.id	+='type="checkbox" onchange="selectCheckboxShip(\''+this.assetID+'\')"/>';
+            this.id +='type="checkbox" onchange="selectCheckboxShip(\''+this.assetID+'\')"/>';
 
                 if(this.assetName == null){  
                     this.assetName = '';
@@ -302,8 +303,8 @@ Created By: Suyati Technologies-->
                     "aaData": allShippingAssets,
                     "iDisplayLength": 10,
                     "language" : {
-                    	"lengthMenu": "Show _MENU_ records",
-                    	"info": "Showing _START_ to _END_ of _TOTAL_ records",
+                        "lengthMenu": "Show _MENU_ records",
+                        "info": "Showing _START_ to _END_ of _TOTAL_ records",
                     },
                     "aoColumns": [{
                         "mData": "id",
@@ -324,7 +325,7 @@ Created By: Suyati Technologies-->
                 });
         }
 
-        //Javascript Function to build Installed Assets Table
+        // Function to populate Installed Assets Table
         function buildInstalledAssetTable() {
             var allInstalledAssets = {!jsonDataInstalledAssets};
             j$.each(allInstalledAssets, function() {
@@ -358,8 +359,8 @@ Created By: Suyati Technologies-->
                     "aaData": allInstalledAssets,
                     "iDisplayLength": 10,
                     "language" : {
-                    	"lengthMenu": "Show _MENU_ records",
-                    	"info": "Showing _START_ to _END_ of _TOTAL_ records",
+                        "lengthMenu": "Show _MENU_ records",
+                        "info": "Showing _START_ to _END_ of _TOTAL_ records",
                     },
                     "aoColumns": [{
                         "mData": "id",
@@ -395,8 +396,8 @@ Created By: Suyati Technologies-->
                 var checkCheckboxRetainAsset = retainAssetArr.indexOf(assetID);
 
                 if(checkCheckboxRetainAsset>=0){
-                	retainAssetArr.splice(checkCheckboxRetainAsset,1);
-                	deleteAssetArr.push(assetID);
+                    retainAssetArr.splice(checkCheckboxRetainAsset,1);
+                    deleteAssetArr.push(assetID);
                 }
                 if(checkCheckboxNewAsset>=0){
                     shippingAssetArr.splice(checkCheckboxNewAsset,1);
@@ -416,8 +417,8 @@ Created By: Suyati Technologies-->
                 var checkCheckboxRetainAsset = retainAssetArr.indexOf(assetID);
 
                 if(checkCheckboxRetainAsset>=0){
-                	retainAssetArr.splice(checkCheckboxRetainAsset,1);
-                	deleteAssetArr.push(assetID);
+                    retainAssetArr.splice(checkCheckboxRetainAsset,1);
+                    deleteAssetArr.push(assetID);
                 }
 
                 if(checkCheckboxInstallAsset>=0){
@@ -431,11 +432,11 @@ Created By: Suyati Technologies-->
         function assetToController(){
 
             j$.merge(newAssetArr,shippingAssetArr);
-        	j$.merge(newAssetArr,installedAssetArr);
-			j$.merge(retainAssetArr,newAssetArr);
-			j$.merge(totalAssetArr,newAssetArr);
-			j$.merge(totalAssetArr,deleteAssetArr);
-        	
+            j$.merge(newAssetArr,installedAssetArr);
+            j$.merge(retainAssetArr,newAssetArr);
+            j$.merge(totalAssetArr,newAssetArr);
+            j$.merge(totalAssetArr,deleteAssetArr);
+            
             if(j$('.rangeFrom').val() == '' && j$('.rangeTo').val() == ''){
                 j$('#errorMsgDate').html('Please select the License Begin Date and End Date');
             }
@@ -457,28 +458,28 @@ Created By: Suyati Technologies-->
             }
 
             else {
-	            j$('input[id$=hiddenBlockNewAssets]').val(newAssetArr);
-	            j$('input[id$=hiddenBlockDeleteAssets]').val(deleteAssetArr);
-	            actFuncAssetToController();
+                j$('input[id$=hiddenBlockNewAssets]').val(newAssetArr);
+                j$('input[id$=hiddenBlockDeleteAssets]').val(deleteAssetArr);
+                actFuncAssetToController();
             }
         }
 
         function fetchAssetArr(){
-        	jsKeyRequestId = '{!keyRequestID}';
-        	console.log('jsKeyRequestId:::' + jsKeyRequestId);
-        	retainAssetArr = {!jsonCheckedAssetIds};
-        	if(retainAssetArr == '0'){
-        		retainAssetArr=[];
-        	}
-			else{
-			repopulateCheckboxes();
-			}
-			j$('.rangeFrom').val('{!retainBeginDate}');
-			j$('.rangeTo').val('{!retainEndDate}');
+            jsKeyRequestId = '{!keyRequestID}';
+            console.log('jsKeyRequestId:::' + jsKeyRequestId);
+            retainAssetArr = {!jsonCheckedAssetIds};
+            if(retainAssetArr == '0'){
+                retainAssetArr=[];
+            }
+            else{
+            repopulateCheckboxes();
+            }
+            j$('.rangeFrom').val('{!retainBeginDate}');
+            j$('.rangeTo').val('{!retainEndDate}');
         }
 
         function repopulateCheckboxes(){
-        	 j$(retainAssetArr).each(function(i,val){
+             j$(retainAssetArr).each(function(i,val){
                 j$('#'+ val).prop('checked',true);
              });
         }
